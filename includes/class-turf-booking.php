@@ -190,6 +190,15 @@ class Turf_Booking {
         // Save meta box data
         $this->loader->add_action('save_post_tb_court', $plugin_post_types, 'save_court_meta_box_data');
         $this->loader->add_action('save_post_tb_booking', $plugin_post_types, 'save_booking_meta_box_data');
+
+        // Add these lines after the existing post type registrations
+$this->loader->add_action('init', $plugin_post_types, 'register_addon_post_type');
+$this->loader->add_action('add_meta_boxes', $plugin_post_types, 'add_addon_meta_boxes');
+$this->loader->add_action('save_post_tb_addon', $plugin_post_types, 'save_addon_meta_box_data');
+
+// Add columns for courts
+$this->loader->add_filter('manage_tb_court_posts_columns', $plugin_post_types, 'add_court_addon_column');
+$this->loader->add_action('manage_tb_court_posts_custom_column', $plugin_post_types, 'display_court_addon_column', 10, 2);
     }
 
     /**
