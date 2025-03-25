@@ -661,4 +661,26 @@ class Turf_Booking_Bookings {
         
         return $details;
     }
+
+
+    /**
+ * Get addon details by ID
+ *
+ * @param int $addon_id Addon ID
+ * @return array|bool Addon details or false if not found
+ */
+private function get_addon_details($addon_id) {
+    $addon = get_post($addon_id);
+    
+    if (!$addon || $addon->post_type !== 'tb_addon') {
+        return false;
+    }
+    
+    return array(
+        'id' => $addon_id,
+        'name' => $addon->post_title,
+        'price' => get_post_meta($addon_id, '_tb_addon_price', true),
+        'type' => get_post_meta($addon_id, '_tb_addon_type', true),
+    );
+}
 }
