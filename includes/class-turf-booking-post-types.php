@@ -777,6 +777,280 @@ class Turf_Booking_Post_Types {
         </table>
         <?php
     }
+
+
+    /**
+ * Register the custom post type for addons.
+ */
+public function register_addon_post_type() {
+    $labels = array(
+        'name'                  => _x('Addons', 'Post Type General Name', 'turf-booking'),
+        'singular_name'         => _x('Addon', 'Post Type Singular Name', 'turf-booking'),
+        'menu_name'             => __('Addons', 'turf-booking'),
+        'name_admin_bar'        => __('Addon', 'turf-booking'),
+        'archives'              => __('Addon Archives', 'turf-booking'),
+        'attributes'            => __('Addon Attributes', 'turf-booking'),
+        'parent_item_colon'     => __('Parent Addon:', 'turf-booking'),
+        'all_items'             => __('All Addons', 'turf-booking'),
+        'add_new_item'          => __('Add New Addon', 'turf-booking'),
+        'add_new'               => __('Add New', 'turf-booking'),
+        'new_item'              => __('New Addon', 'turf-booking'),
+        'edit_item'             => __('Edit Addon', 'turf-booking'),
+        'update_item'           => __('Update Addon', 'turf-booking'),
+        'view_item'             => __('View Addon', 'turf-booking'),
+        'view_items'            => __('View Addons', 'turf-booking'),
+        'search_items'          => __('Search Addon', 'turf-booking'),
+        'not_found'             => __('Not found', 'turf-booking'),
+        'not_found_in_trash'    => __('Not found in Trash', 'turf-booking'),
+        'featured_image'        => __('Addon Image', 'turf-booking'),
+        'set_featured_image'    => __('Set addon image', 'turf-booking'),
+        'remove_featured_image' => __('Remove addon image', 'turf-booking'),
+        'use_featured_image'    => __('Use as addon image', 'turf-booking'),
+        'insert_into_item'      => __('Insert into addon', 'turf-booking'),
+        'uploaded_to_this_item' => __('Uploaded to this addon', 'turf-booking'),
+        'items_list'            => __('Addons list', 'turf-booking'),
+        'items_list_navigation' => __('Addons list navigation', 'turf-booking'),
+        'filter_items_list'     => __('Filter addons list', 'turf-booking'),
+    );
+    
+    $args = array(
+        'label'                 => __('Addon', 'turf-booking'),
+        'description'           => __('Additional services or features for courts', 'turf-booking'),
+        'labels'                => $labels,
+        'supports'              => array('title', 'editor', 'thumbnail', 'excerpt'),
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => true,
+        'menu_position'         => 31, // Position after Courts
+        'menu_icon'             => 'dashicons-plus-alt',
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => false,
+        'can_export'            => true,
+        'has_archive'           => false,
+        'exclude_from_search'   => true,
+        'publicly_queryable'    => false,
+        'capability_type'       => 'post',
+        'show_in_rest'          => true,
+    );
+    
+    register_post_type('tb_addon', $args);
+}
+
+/**
+ * Add meta boxes for addons
+ */
+public function add_addon_meta_boxes() {
+    add_meta_box(
+        'tb_addon_details',
+        __('Addon Details', 'turf-booking'),
+        array($this, 'render_addon_details_meta_box'),
+        'tb_addon',
+        'normal',
+        'high'
+    );
+    
+    add_meta_box(
+        'tb_addon_courts',
+        __('Assign to Courts', 'turf-booking'),
+        array($this, 'render_addon_courts_meta_box'),
+        'tb_addon',
+        'side',
+        'default'
+    );
+}
+
+/**
+ * Render addon details meta box
+ */
+public function render_addon_details_meta_box($post) {
+    // Add nonce for security
+    wp_nonce_field('tb_addon_meta_box', 'tb_addon_meta_box_nonce');
+    
+    // Retrieve current values
+    $addon_price = get_post_meta($post->ID, '_tb_addon_price', true);
+    $addon_type = get_post_meta($post->ID, '_tb_addon_type', true);
+    
+    // Output fields
+    ?>
+    <table class="form-table">
+        <tr>
+            <th scope="row">
+                <label for="tb_addon_price"><?php _e('Price', 'turf-booking'); ?></label>
+            </th>
+            <td>
+                <input type="number" id="tb_addon_price" name="tb_addon_price" value="<?php echo esc_attr($addon_price); ?>" class="regular-text" min="0" step="0.01">
+                <p class="description"><?php _e('The price of this addon', 'turf-booking'); ?></p>
+            </td>
+        </tr>
+        <tr>
+            <th scope="row">
+                <label for="tb_addon_type"><?php _e('Addon Type', 'turf-booking'); ?></label>
+            </th>
+            <td>
+                <select id="tb_addon_type" name="tb_addon_type">
+                    <option value="per_booking" <?php selected($addon_type, 'per_booking'); ?>><?php _e('Per Booking', 'turf-booking'); ?></option>
+                    <option value="per_hour" <?php selected($addon_type, 'per_hour'); ?>><?php _e('Per Hour', 'turf-booking'); ?></option>
+                </select>
+                <p class="description"><?php _e('How this addon should be priced', 'turf-booking'); ?></p>
+            </td>
+        </tr>
+    </table>
+    <?php
+}
+
+/**
+ * Render addon courts meta box
+ */
+public function render_addon_courts_meta_box($post) {
+    // Get all courts
+    $courts = get_posts(array(
+        'post_type' => 'tb_court',
+        'numberposts' => -1,
+        'orderby' => 'title',
+        'order' => 'ASC',
+    ));
+    
+    // Get current assigned courts
+    $assigned_courts = get_post_meta($post->ID, '_tb_addon_courts', true);
+    if (!is_array($assigned_courts)) {
+        $assigned_courts = array();
+    }
+    
+    // Output fields
+    if (empty($courts)) {
+        echo '<p>' . __('No courts found. Please create courts first.', 'turf-booking') . '</p>';
+        return;
+    }
+    ?>
+    <div class="tb-addon-courts-container">
+        <p><?php _e('Select the courts where this addon will be available:', 'turf-booking'); ?></p>
+        <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+            <?php foreach ($courts as $court) : ?>
+                <label style="display: block; margin-bottom: 5px;">
+                    <input type="checkbox" name="tb_addon_courts[]" value="<?php echo esc_attr($court->ID); ?>" <?php checked(in_array($court->ID, $assigned_courts)); ?>>
+                    <?php echo esc_html($court->post_title); ?>
+                </label>
+            <?php endforeach; ?>
+        </div>
+        <p>
+            <label style="display: block; margin-bottom: 5px;">
+                <input type="checkbox" id="select-all-courts">
+                <?php _e('Select/Deselect All', 'turf-booking'); ?>
+            </label>
+        </p>
+    </div>
+    <script>
+        jQuery(document).ready(function($) {
+            // Select/deselect all courts
+            $('#select-all-courts').on('change', function() {
+                var isChecked = $(this).prop('checked');
+                $('input[name="tb_addon_courts[]"]').prop('checked', isChecked);
+            });
+        });
+    </script>
+    <?php
+}
+
+/**
+ * Save addon meta box data
+ */
+public function save_addon_meta_box_data($post_id) {
+    // Check if our nonce is set
+    if (!isset($_POST['tb_addon_meta_box_nonce'])) {
+        return;
+    }
+    
+    // Verify that the nonce is valid
+    if (!wp_verify_nonce($_POST['tb_addon_meta_box_nonce'], 'tb_addon_meta_box')) {
+        return;
+    }
+    
+    // If this is an autosave, our form has not been submitted, so we don't want to do anything
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+    
+    // Check the user's permissions
+    if (!current_user_can('edit_post', $post_id)) {
+        return;
+    }
+    
+    // Save addon details
+    if (isset($_POST['tb_addon_price'])) {
+        update_post_meta($post_id, '_tb_addon_price', floatval($_POST['tb_addon_price']));
+    }
+    
+    if (isset($_POST['tb_addon_type'])) {
+        update_post_meta($post_id, '_tb_addon_type', sanitize_text_field($_POST['tb_addon_type']));
+    }
+    
+    // Save assigned courts
+    $assigned_courts = isset($_POST['tb_addon_courts']) ? array_map('absint', $_POST['tb_addon_courts']) : array();
+    update_post_meta($post_id, '_tb_addon_courts', $assigned_courts);
+}
+
+/**
+ * Add the addon column to the court listing
+ */
+public function add_court_addon_column($columns) {
+    $new_columns = array();
+    
+    foreach ($columns as $key => $title) {
+        $new_columns[$key] = $title;
+        
+        if ($key === 'title') {
+            $new_columns['addons'] = __('Addons', 'turf-booking');
+        }
+    }
+    
+    return $new_columns;
+}
+
+/**
+ * Display addons in the court listing
+ */
+public function display_court_addon_column($column, $post_id) {
+    if ($column === 'addons') {
+        // Get addons assigned to this court
+        $addons = $this->get_court_addons($post_id);
+        
+        if (!empty($addons)) {
+            $addon_names = array();
+            foreach ($addons as $addon) {
+                $addon_names[] = '<a href="' . get_edit_post_link($addon->ID) . '">' . $addon->post_title . '</a>';
+            }
+            echo implode(', ', $addon_names);
+        } else {
+            echo __('No addons assigned', 'turf-booking');
+        }
+    }
+}
+
+/**
+ * Get addons for a specific court
+ */
+public function get_court_addons($court_id) {
+    $addons = array();
+    
+    // Query all addons
+    $all_addons = get_posts(array(
+        'post_type' => 'tb_addon',
+        'numberposts' => -1,
+        'post_status' => 'publish',
+    ));
+    
+    // Check each addon for court assignment
+    foreach ($all_addons as $addon) {
+        $assigned_courts = get_post_meta($addon->ID, '_tb_addon_courts', true);
+        
+        if (is_array($assigned_courts) && in_array($court_id, $assigned_courts)) {
+            $addons[] = $addon;
+        }
+    }
+    
+    return $addons;
+}
     
     /**
      * Render booking payment meta box
