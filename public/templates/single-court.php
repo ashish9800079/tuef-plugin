@@ -108,8 +108,15 @@ if ($gallery_images) {
                     <span class="tb-price-unit"><?php _e('/ hour', 'turf-booking'); ?></span>
                 </div>
                 
-                <a href="#tb-booking-section" class="tb-book-now-btn"><?php _e('Book Now', 'turf-booking'); ?></a>
+                <?php
+                // Get the booking page URL
+                $booking_page_id = isset(get_option('tb_page_settings')['booking']) ? get_option('tb_page_settings')['booking'] : 0;
+                $booking_page_url = $booking_page_id ? add_query_arg('court_id', $court_id, get_permalink($booking_page_id)) : '#';
+                ?>
+                
+                <a href="<?php echo esc_url($booking_page_url); ?>" class="tb-book-now-btn"><?php _e('Book Now', 'turf-booking'); ?></a>
             </div>
+
         </div>
     </div>
     
@@ -350,100 +357,10 @@ if ($gallery_images) {
             </div>
         </div>
         
-        <!-- Booking Section -->
-        <div id="tb-booking-section" class="tb-booking-widget">
-            <h3><?php _e('Book This Court', 'turf-booking'); ?></h3>
-            
-            <?php if (is_user_logged_in()) : ?>
-                <div class="tb-booking-form">
-                    <div class="tb-booking-form-row">
-                        <div class="tb-form-group">
-                            <label for="tb-booking-date"><?php _e('Select Date', 'turf-booking'); ?></label>
-                            <input type="date" id="tb-booking-date" name="booking_date" min="<?php echo date('Y-m-d'); ?>" required>
-                        </div>
-                    </div>
-                    
-                    <div class="tb-time-slots-container">
-                        <div class="tb-form-group">
-                            <label><?php _e('Select Time Slot', 'turf-booking'); ?></label>
-                            <div class="tb-time-slots" id="tb-time-slots">
-                                <div class="tb-loading">
-                                    <div class="tb-spinner"></div>
-                                    <p><?php _e('Please select a date to view available time slots', 'turf-booking'); ?></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tb-booking-details" id="tb-booking-details" style="display: none;">
-                        <h4><?php _e('Booking Summary', 'turf-booking'); ?></h4>
-                        
-                        <div class="tb-booking-summary">
-                            <div class="tb-summary-item">
-                                <span><?php _e('Court', 'turf-booking'); ?>:</span>
-                                <strong><?php the_title(); ?></strong>
-                            </div>
-                            
-                            <div class="tb-summary-item" id="tb-summary-date">
-                                <span><?php _e('Date', 'turf-booking'); ?>:</span>
-                                <strong></strong>
-                            </div>
-                            
-                            <div class="tb-summary-item" id="tb-summary-time">
-                                <span><?php _e('Time', 'turf-booking'); ?>:</span>
-                                <strong></strong>
-                            </div>
-                            
-                            <div class="tb-summary-item" id="tb-summary-price">
-                                <span><?php _e('Price', 'turf-booking'); ?>:</span>
-                                <strong></strong>
-                            </div>
-                        </div>
-                        
-                        <div class="tb-user-details">
-                            <h4><?php _e('Contact Information', 'turf-booking'); ?></h4>
-                            
-                            <?php
-                            $current_user = wp_get_current_user();
-                            $user_phone = get_user_meta($current_user->ID, 'phone', true);
-                            ?>
-                            
-                            <div class="tb-booking-form-row">
-                                <div class="tb-form-group">
-                                    <label for="tb-booking-name"><?php _e('Name', 'turf-booking'); ?></label>
-                                    <input type="text" id="tb-booking-name" name="booking_name" value="<?php echo esc_attr($current_user->display_name); ?>" required>
-                                </div>
-                                
-                                <div class="tb-form-group">
-                                    <label for="tb-booking-email"><?php _e('Email', 'turf-booking'); ?></label>
-                                    <input type="email" id="tb-booking-email" name="booking_email" value="<?php echo esc_attr($current_user->user_email); ?>" required>
-                                </div>
-                            </div>
-                            
-                            <div class="tb-booking-form-row">
-                                <div class="tb-form-group">
-                                    <label for="tb-booking-phone"><?php _e('Phone', 'turf-booking'); ?></label>
-                                    <input type="tel" id="tb-booking-phone" name="booking_phone" value="<?php echo esc_attr($user_phone); ?>" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="tb-booking-actions">
-                            <button type="button" id="tb-book-now" class="tb-button"><?php _e('Book Now', 'turf-booking'); ?></button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="tb-booking-response" class="tb-booking-response" style="display: none;"></div>
-                
-                <div id="tb-booking-error" class="tb-booking-error" style="display: none;"></div>
-            <?php else : ?>
-                <div class="tb-login-required">
-                    <p><?php _e('Please log in to book this court.', 'turf-booking'); ?></p>
-                    <a href="<?php echo esc_url(wp_login_url(get_permalink())); ?>" class="tb-button"><?php _e('Login', 'turf-booking'); ?></a>
-                </div>
-            <?php endif; ?>
-        </div>
+    
+
+
+
     </div>
     
     <!-- Similar courts section -->
