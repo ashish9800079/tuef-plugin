@@ -35,7 +35,12 @@ class Turf_Booking_Admin {
     public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
+        
+      add_action('admin_init', array($this, 'register_settings'));
+
     }
+    
+ 
 
     /**
      * Register the stylesheets for the admin area.
