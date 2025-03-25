@@ -92,6 +92,30 @@ class Turf_Booking_Activator {
             KEY payment_id (payment_id),
             KEY payment_status (payment_status)
         ) $charset_collate;";
+
+
+
+// Add after the existing table creation code within the create_tables method
+
+// Table for booking addons
+$table_name_addons = $wpdb->prefix . 'tb_booking_addons';
+
+$sql .= "CREATE TABLE $table_name_addons (
+    id bigint(20) NOT NULL AUTO_INCREMENT,
+    booking_id bigint(20) NOT NULL,
+    addon_id bigint(20) NOT NULL,
+    addon_name varchar(255) NOT NULL,
+    addon_price decimal(10,2) NOT NULL DEFAULT 0,
+    addon_type varchar(20) NOT NULL DEFAULT 'per_booking',
+    created_at datetime NOT NULL,
+    PRIMARY KEY  (id),
+    KEY booking_id (booking_id),
+    KEY addon_id (addon_id)
+) $charset_collate;";
+
+
+
+
         
         // Execute SQL
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
