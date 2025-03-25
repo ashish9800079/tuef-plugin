@@ -667,38 +667,71 @@ public function create_booking() {
     /**
      * Get booking details
      */
-    public function get_booking_details($booking_id) {
-        $booking = get_post($booking_id);
-        
-        if (!$booking || $booking->post_type !== 'tb_booking') {
-            return false;
-        }
-        
-        $court_id = get_post_meta($booking_id, '_tb_booking_court_id', true);
-        
-        $details = array(
-            'id' => $booking_id,
-            'court_id' => $court_id,
-            'court_name' => get_the_title($court_id),
-            'court_image' => get_the_post_thumbnail_url($court_id, 'medium'),
-            'date' => get_post_meta($booking_id, '_tb_booking_date', true),
-            'time_from' => get_post_meta($booking_id, '_tb_booking_time_from', true),
-            'time_to' => get_post_meta($booking_id, '_tb_booking_time_to', true),
-            'status' => get_post_meta($booking_id, '_tb_booking_status', true),
-            'user_id' => get_post_meta($booking_id, '_tb_booking_user_id', true),
-            'user_name' => get_post_meta($booking_id, '_tb_booking_user_name', true),
-            'user_email' => get_post_meta($booking_id, '_tb_booking_user_email', true),
-            'user_phone' => get_post_meta($booking_id, '_tb_booking_user_phone', true),
-            'payment_id' => get_post_meta($booking_id, '_tb_booking_payment_id', true),
-            'payment_method' => get_post_meta($booking_id, '_tb_booking_payment_method', true),
-            'payment_status' => get_post_meta($booking_id, '_tb_booking_payment_status', true),
-            'payment_amount' => get_post_meta($booking_id, '_tb_booking_payment_amount', true),
-            'payment_date' => get_post_meta($booking_id, '_tb_booking_payment_date', true),
-            'created_at' => $booking->post_date,
-        );
-        
-        return $details;
+   /**
+ * Get booking details
+ */
+public function get_booking_details($booking_id) {
+    $booking = get_post($booking_id);
+    
+    if (!$booking || $booking->post_type !== 'tb_booking') {
+        return false;
     }
+    
+    $court_id = get_post_meta($booking_id, '_tb_booking_court_id', true);
+    
+    // Get court amount
+    $court_amount = get_post_meta($booking_id, '_tb_booking_court_amount', true);
+    if (!$court_amount) {
+        // For backwards compatibility
+        $court_amount = get_post_meta($booking_id, '_tb_booking_payment_amount', true);
+    }
+    
+    $details = array(
+        'id' => $booking_id,
+        'court_id' => $court_id,
+        'court_name' => get_the_title($court_id),
+        'court_image' => get_the_post_thumbnail_url($court_id, 'medium'),
+        'date' => get_post_meta($booking_id, '_tb_booking_date', true),
+        'time_from' => get_post_meta($booking_id, '_tb_booking_time_from', true),
+        'time_to' => get_post_meta($booking_id, '_tb_booking_time_to', true),
+        'status' => get_post_meta($booking_id, '_tb_booking_status', true),
+        'user_id' => get_post_meta($booking_id, '_tb_booking_user_id', true),
+        'user_name' => get_post_meta($booking_id, '_tb_booking_user_name', true),
+        'user_email' => get_post_meta($booking_id, '_tb_booking_user_email', true),
+        'user_phone' => get_post_meta($booking_id, '_tb_booking_user_phone', true),
+        'payment_id' => get_post_meta($booking_id, '_tb_booking_payment_id', true),
+        'payment_method' => get_post_meta($booking_id, '_tb_booking_payment_method', true),
+        'payment_status' => get_post_meta($booking_id, '_tb_booking_payment_status', true),
+        'payment_amount' => get_post_meta($booking_id, '_tb_booking_payment_amount', true),
+        'payment_date' => get_post_meta($booking_id, '_tb_booking_payment_date', true),
+        'court_amount' => $court_amount,
+        'created_at' => $booking->post_date,
+        'addons' => $this->get_booking_addons($booking_id),
+    );
+    
+    return $details;
+}
+
+/**
+ * Get addons for a booking
+ *
+ * @param int $booking_id Booking ID
+ * @return array Array of addon details
+ */
+private function get_booking_addons($booking_id) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'tb_booking_addons';
+    
+    $addons = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT * FROM $table_name WHERE booking_id = %d",
+            $booking_id
+        ),
+        ARRAY_A
+    );
+    
+    return $addons ?: array();
+}
 
 
     /**
