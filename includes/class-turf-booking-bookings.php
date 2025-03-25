@@ -151,186 +151,224 @@ class Turf_Booking_Bookings {
     /**
      * Create a new booking
      */
-    public function create_booking() {
-        // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'tb_booking_nonce')) {
-            wp_send_json_error(array('message' => __('Security check failed', 'turf-booking')));
-        }
-        
-        // Get and validate input data
-        $court_id = isset($_POST['court_id']) ? absint($_POST['court_id']) : 0;
-        $date = isset($_POST['date']) ? sanitize_text_field($_POST['date']) : '';
-        $time_from = isset($_POST['time_from']) ? sanitize_text_field($_POST['time_from']) : '';
-        $time_to = isset($_POST['time_to']) ? sanitize_text_field($_POST['time_to']) : '';
-        $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
-        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
-        $phone = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
-        
-        // Validate required fields
-        if (!$court_id || !$date || !$time_from || !$time_to || !$name || !$email || !$phone) {
-            wp_send_json_error(array('message' => __('All fields are required', 'turf-booking')));
-        }
-        
-        // Check if the court exists
-        $court = get_post($court_id);
-        if (!$court || $court->post_type !== 'tb_court') {
-            wp_send_json_error(array('message' => __('Invalid court selected', 'turf-booking')));
-        }
-        
-        // Check if the slot is available
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'tb_booking_slots';
-        
-        $existing_booking = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name 
-                WHERE court_id = %d 
-                AND booking_date = %s 
-                AND (
-                    (time_from <= %s AND time_to > %s) OR
-                    (time_from < %s AND time_to >= %s) OR
-                    (time_from >= %s AND time_to <= %s)
-                )
-                AND status = 'booked'",
-                $court_id,
-                $date,
-                $time_from,
-                $time_from,
-                $time_to,
-                $time_to,
-                $time_from,
-                $time_to
+  /**
+ * Create a new booking
+ */
+public function create_booking() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'tb_booking_nonce')) {
+        wp_send_json_error(array('message' => __('Security check failed', 'turf-booking')));
+    }
+    
+    // Get and validate input data
+    $court_id = isset($_POST['court_id']) ? absint($_POST['court_id']) : 0;
+    $date = isset($_POST['date']) ? sanitize_text_field($_POST['date']) : '';
+    $time_from = isset($_POST['time_from']) ? sanitize_text_field($_POST['time_from']) : '';
+    $time_to = isset($_POST['time_to']) ? sanitize_text_field($_POST['time_to']) : '';
+    $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
+    $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+    $phone = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
+    $addons = isset($_POST['addons']) ? array_map('absint', (array) $_POST['addons']) : array();
+    
+    // Validate required fields
+    if (!$court_id || !$date || !$time_from || !$time_to || !$name || !$email || !$phone) {
+        wp_send_json_error(array('message' => __('All fields are required', 'turf-booking')));
+    }
+    
+    // Check if the court exists
+    $court = get_post($court_id);
+    if (!$court || $court->post_type !== 'tb_court') {
+        wp_send_json_error(array('message' => __('Invalid court selected', 'turf-booking')));
+    }
+    
+    // Check if the slot is available
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'tb_booking_slots';
+    
+    $existing_booking = $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_name 
+            WHERE court_id = %d 
+            AND booking_date = %s 
+            AND (
+                (time_from <= %s AND time_to > %s) OR
+                (time_from < %s AND time_to >= %s) OR
+                (time_from >= %s AND time_to <= %s)
             )
-        );
-        
-        if ($existing_booking > 0) {
-            wp_send_json_error(array('message' => __('This time slot is no longer available', 'turf-booking')));
-        }
-        
-        // Create booking post
-        $booking_title = sprintf(
-            __('Booking: %s - %s (%s - %s)', 'turf-booking'),
-            get_the_title($court_id),
+            AND status = 'booked'",
+            $court_id,
             $date,
             $time_from,
+            $time_from,
+            $time_to,
+            $time_to,
+            $time_from,
             $time_to
-        );
-        
-        $booking_id = wp_insert_post(array(
-            'post_title' => $booking_title,
-            'post_status' => 'publish',
-            'post_type' => 'tb_booking',
-        ));
-        
-        if (is_wp_error($booking_id)) {
-            wp_send_json_error(array('message' => __('Failed to create booking', 'turf-booking')));
-        }
-        
-        // Save booking meta
-        update_post_meta($booking_id, '_tb_booking_court_id', $court_id);
-        update_post_meta($booking_id, '_tb_booking_date', $date);
-        update_post_meta($booking_id, '_tb_booking_time_from', $time_from);
-        update_post_meta($booking_id, '_tb_booking_time_to', $time_to);
-        update_post_meta($booking_id, '_tb_booking_status', 'pending');
-        
-        // Save user details
-        $user_id = get_current_user_id();
-        update_post_meta($booking_id, '_tb_booking_user_id', $user_id);
-        update_post_meta($booking_id, '_tb_booking_user_name', $name);
-        update_post_meta($booking_id, '_tb_booking_user_email', $email);
-        update_post_meta($booking_id, '_tb_booking_user_phone', $phone);
-        
-        // Calculate booking amount
-        $base_price = get_post_meta($court_id, '_tb_court_base_price', true);
-        $is_weekend = (date('N', strtotime($date)) >= 6);
-        $weekend_price = get_post_meta($court_id, '_tb_court_weekend_price', true);
-        $peak_hour_price = get_post_meta($court_id, '_tb_court_peak_hour_price', true);
-        
-        $price = $base_price;
-        
-        // Weekend pricing
-        if ($is_weekend && $weekend_price) {
-            $price = $weekend_price;
-        }
-        
-        // Peak hour pricing (e.g., 6PM - 10PM)
-        $slot_hour = (int)substr($time_from, 0, 2);
-        if ($peak_hour_price && $slot_hour >= 18 && $slot_hour < 22) {
-            $price = $peak_hour_price;
-        }
-        
-        // Calculate hours
-        $time_from_obj = DateTime::createFromFormat('H:i', $time_from);
-        $time_to_obj = DateTime::createFromFormat('H:i', $time_to);
-        $interval = $time_from_obj->diff($time_to_obj);
-        $hours = $interval->h + ($interval->i / 60);
-        
-        $total_amount = $price * $hours;
-        
-        // Save payment details
-        update_post_meta($booking_id, '_tb_booking_payment_amount', $total_amount);
-        update_post_meta($booking_id, '_tb_booking_payment_status', 'pending');
-        
-        // Create booking slot in database
-        $wpdb->insert(
-            $table_name,
-            array(
-                'court_id' => $court_id,
-                'booking_id' => $booking_id,
-                'booking_date' => $date,
-                'time_from' => $time_from,
-                'time_to' => $time_to,
-                'status' => 'booked',
-                'created_at' => current_time('mysql'),
-            ),
-            array('%d', '%d', '%s', '%s', '%s', '%s', '%s')
-        );
-        
-        // Record in booking slot history
-        $table_name_history = $wpdb->prefix . 'tb_booking_slot_history';
-        $slot_id = $wpdb->insert_id;
-        
-        $wpdb->insert(
-            $table_name_history,
-            array(
-                'slot_id' => $slot_id,
-                'court_id' => $court_id,
-                'booking_id' => $booking_id,
-                'booking_date' => $date,
-                'time_from' => $time_from,
-                'time_to' => $time_to,
-                'status' => 'booked',
-                'created_at' => current_time('mysql'),
-                'user_id' => $user_id,
-            ),
-            array('%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
-        );
-        
-        // Get booking confirmation method from settings
-        $general_settings = get_option('tb_general_settings');
-        $confirmation_method = isset($general_settings['booking_confirmation']) ? $general_settings['booking_confirmation'] : 'auto';
-        
-        // If auto confirmation, confirm booking
-        if ($confirmation_method === 'auto') {
-            update_post_meta($booking_id, '_tb_booking_status', 'confirmed');
-            $this->send_booking_confirmation_email($booking_id);
-        } else {
-            $this->send_booking_pending_email($booking_id);
-        }
-        
-        // Send admin notification
-        $this->send_admin_booking_notification($booking_id);
-        
-        // Return booking details for payment processing
-        wp_send_json_success(array(
-            'booking_id' => $booking_id,
-            'amount' => $total_amount,
-            'confirmation_method' => $confirmation_method,
-            'redirect_url' => ($confirmation_method === 'payment') 
-                ? add_query_arg('booking_id', $booking_id, get_permalink(get_option('tb_page_settings')['checkout']))
-                : add_query_arg('booking_id', $booking_id, get_permalink(get_option('tb_page_settings')['booking-confirmation']))
-        ));
+        )
+    );
+    
+    if ($existing_booking > 0) {
+        wp_send_json_error(array('message' => __('This time slot is no longer available', 'turf-booking')));
     }
+    
+    // Create booking post
+    $booking_title = sprintf(
+        __('Booking: %s - %s (%s - %s)', 'turf-booking'),
+        get_the_title($court_id),
+        $date,
+        $time_from,
+        $time_to
+    );
+    
+    $booking_id = wp_insert_post(array(
+        'post_title' => $booking_title,
+        'post_status' => 'publish',
+        'post_type' => 'tb_booking',
+    ));
+    
+    if (is_wp_error($booking_id)) {
+        wp_send_json_error(array('message' => __('Failed to create booking', 'turf-booking')));
+    }
+    
+    // Save booking meta
+    update_post_meta($booking_id, '_tb_booking_court_id', $court_id);
+    update_post_meta($booking_id, '_tb_booking_date', $date);
+    update_post_meta($booking_id, '_tb_booking_time_from', $time_from);
+    update_post_meta($booking_id, '_tb_booking_time_to', $time_to);
+    update_post_meta($booking_id, '_tb_booking_status', 'pending');
+    
+    // Save user details
+    $user_id = get_current_user_id();
+    update_post_meta($booking_id, '_tb_booking_user_id', $user_id);
+    update_post_meta($booking_id, '_tb_booking_user_name', $name);
+    update_post_meta($booking_id, '_tb_booking_user_email', $email);
+    update_post_meta($booking_id, '_tb_booking_user_phone', $phone);
+    
+    // Calculate booking amount
+    $base_price = get_post_meta($court_id, '_tb_court_base_price', true);
+    $is_weekend = (date('N', strtotime($date)) >= 6);
+    $weekend_price = get_post_meta($court_id, '_tb_court_weekend_price', true);
+    $peak_hour_price = get_post_meta($court_id, '_tb_court_peak_hour_price', true);
+    
+    $price = $base_price;
+    
+    // Weekend pricing
+    if ($is_weekend && $weekend_price) {
+        $price = $weekend_price;
+    }
+    
+    // Peak hour pricing (e.g., 6PM - 10PM)
+    $slot_hour = (int)substr($time_from, 0, 2);
+    if ($peak_hour_price && $slot_hour >= 18 && $slot_hour < 22) {
+        $price = $peak_hour_price;
+    }
+    
+    // Calculate hours
+    $time_from_obj = DateTime::createFromFormat('H:i', $time_from);
+    $time_to_obj = DateTime::createFromFormat('H:i', $time_to);
+    $interval = $time_from_obj->diff($time_to_obj);
+    $hours = $interval->h + ($interval->i / 60);
+    
+    $court_amount = $price * $hours;
+    $total_amount = $court_amount;
+    
+    // Process addons
+    if (!empty($addons)) {
+        $table_name_addons = $wpdb->prefix . 'tb_booking_addons';
+        
+        foreach ($addons as $addon_id) {
+            $addon_details = $this->get_addon_details($addon_id);
+            
+            if ($addon_details) {
+                $addon_price = floatval($addon_details['price']);
+                $addon_type = $addon_details['type'];
+                
+                // Calculate addon price (either per booking or per hour)
+                $addon_total = ($addon_type === 'per_hour') ? $addon_price * $hours : $addon_price;
+                $total_amount += $addon_total;
+                
+                // Store addon in the database
+                $wpdb->insert(
+                    $table_name_addons,
+                    array(
+                        'booking_id' => $booking_id,
+                        'addon_id' => $addon_id,
+                        'addon_name' => $addon_details['name'],
+                        'addon_price' => $addon_price,
+                        'addon_type' => $addon_type,
+                        'created_at' => current_time('mysql'),
+                    ),
+                    array('%d', '%d', '%s', '%f', '%s', '%s')
+                );
+            }
+        }
+    }
+    
+    // Save payment details
+    update_post_meta($booking_id, '_tb_booking_payment_amount', $total_amount);
+    update_post_meta($booking_id, '_tb_booking_payment_status', 'pending');
+    update_post_meta($booking_id, '_tb_booking_court_amount', $court_amount);
+    
+    // Create booking slot in database
+    $wpdb->insert(
+        $table_name,
+        array(
+            'court_id' => $court_id,
+            'booking_id' => $booking_id,
+            'booking_date' => $date,
+            'time_from' => $time_from,
+            'time_to' => $time_to,
+            'status' => 'booked',
+            'created_at' => current_time('mysql'),
+        ),
+        array('%d', '%d', '%s', '%s', '%s', '%s', '%s')
+    );
+    
+    // Record in booking slot history
+    $table_name_history = $wpdb->prefix . 'tb_booking_slot_history';
+    $slot_id = $wpdb->insert_id;
+    
+    $wpdb->insert(
+        $table_name_history,
+        array(
+            'slot_id' => $slot_id,
+            'court_id' => $court_id,
+            'booking_id' => $booking_id,
+            'booking_date' => $date,
+            'time_from' => $time_from,
+            'time_to' => $time_to,
+            'status' => 'booked',
+            'created_at' => current_time('mysql'),
+            'user_id' => $user_id,
+        ),
+        array('%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
+    );
+    
+    // Get booking confirmation method from settings
+    $general_settings = get_option('tb_general_settings');
+    $confirmation_method = isset($general_settings['booking_confirmation']) ? $general_settings['booking_confirmation'] : 'auto';
+    
+    // If auto confirmation, confirm booking
+    if ($confirmation_method === 'auto') {
+        update_post_meta($booking_id, '_tb_booking_status', 'confirmed');
+        $this->send_booking_confirmation_email($booking_id);
+    } else {
+        $this->send_booking_pending_email($booking_id);
+    }
+    
+    // Send admin notification
+    $this->send_admin_booking_notification($booking_id);
+    
+    // Return booking details for payment processing
+    wp_send_json_success(array(
+        'booking_id' => $booking_id,
+        'amount' => $total_amount,
+        'confirmation_method' => $confirmation_method,
+        'redirect_url' => ($confirmation_method === 'payment') 
+            ? add_query_arg('booking_id', $booking_id, get_permalink(get_option('tb_page_settings')['checkout']))
+            : add_query_arg('booking_id', $booking_id, get_permalink(get_option('tb_page_settings')['booking-confirmation']))
+    ));
+}
     
     /**
      * Cancel a booking
