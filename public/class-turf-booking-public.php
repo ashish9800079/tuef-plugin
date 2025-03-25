@@ -54,45 +54,48 @@ class Turf_Booking_Public {
      *
      * @since    1.0.0
      */
-    public function enqueue_scripts() {
-        wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/turf-booking-public.js', array( 'jquery' ), $this->version, true );
-        
-        // Add jQuery UI if needed for datepickers and sliders
-        wp_enqueue_script( 'jquery-ui-datepicker' );
-        wp_enqueue_script( 'jquery-ui-slider' );
-        wp_enqueue_style( 'jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css' );
-        
-        // Localize script with data
-        $localized_data = array(
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'availability_nonce' => wp_create_nonce( 'tb_availability_nonce' ),
-            'booking_nonce' => wp_create_nonce( 'tb_booking_nonce' ),
-            'search_nonce' => wp_create_nonce( 'tb_search_nonce' ),
-            'filter_nonce' => wp_create_nonce( 'tb_filter_nonce' ),
-            'dashboard_nonce' => wp_create_nonce( 'tb_dashboard_nonce' ),
-            'currency_symbol' => $this->get_currency_symbol(),
-            'locale' => get_locale(),
-            'loading_slots' => __( 'Loading available time slots...', 'turf-booking' ),
-            'no_slots' => __( 'No time slots available for this date.', 'turf-booking' ),
-            'booked_text' => __( 'Booked', 'turf-booking' ),
-            'ajax_error' => __( 'An error occurred. Please try again.', 'turf-booking' ),
-            'select_date_time' => __( 'Please select a date and time slot.', 'turf-booking' ),
-            'fill_contact_info' => __( 'Please fill in all contact information.', 'turf-booking' ),
-            'processing_booking' => __( 'Processing your booking...', 'turf-booking' ),
-            'booking_error' => __( 'Error processing booking. Please try again.', 'turf-booking' ),
-            'confirm_cancel' => __( 'Are you sure you want to cancel this booking?', 'turf-booking' ),
-            'processing' => __( 'Processing...', 'turf-booking' ),
-            'password_very_weak' => __( 'Very Weak', 'turf-booking' ),
-            'password_weak' => __( 'Weak', 'turf-booking' ),
-            'password_medium' => __( 'Medium', 'turf-booking' ),
-            'password_strong' => __( 'Strong', 'turf-booking' ),
-            'password_very_strong' => __( 'Very Strong', 'turf-booking' ),
-            'passwords_match' => __( 'Passwords match', 'turf-booking' ),
-            'passwords_not_match' => __( 'Passwords do not match', 'turf-booking' ),
-        );
-        
-        wp_localize_script( $this->plugin_name, 'tb_public_params', $localized_data );
-    }
+ /**
+ * Register the JavaScript for the public-facing side of the site.
+ *
+ * @since    1.0.0
+ */
+public function enqueue_scripts() {
+    // Original scripts
+    wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/turf-booking-public.js', array( 'jquery' ), $this->version, true );
+    
+    // Add jQuery UI if needed for datepickers and sliders
+    wp_enqueue_script( 'jquery-ui-datepicker' );
+    wp_enqueue_script( 'jquery-ui-slider' );
+    wp_enqueue_style( 'jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css' );
+    
+    // Add multi-step booking wizard script
+    wp_enqueue_script( $this->plugin_name . '-wizard', plugin_dir_url( __FILE__ ) . 'js/turf-booking-wizard.js', array( 'jquery', 'jquery-ui-datepicker' ), $this->version, true );
+    
+    // Localize script with data
+    $localized_data = array(
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'availability_nonce' => wp_create_nonce( 'tb_availability_nonce' ),
+        'booking_nonce' => wp_create_nonce( 'tb_booking_nonce' ),
+        'search_nonce' => wp_create_nonce( 'tb_search_nonce' ),
+        'filter_nonce' => wp_create_nonce( 'tb_filter_nonce' ),
+        'dashboard_nonce' => wp_create_nonce( 'tb_dashboard_nonce' ),
+        'currency_symbol' => $this->get_currency_symbol(),
+        'locale' => get_locale(),
+        'loading_slots' => __( 'Loading available time slots...', 'turf-booking' ),
+        'no_slots' => __( 'No time slots available for this date.', 'turf-booking' ),
+        'booked_text' => __( 'Booked', 'turf-booking' ),
+        'ajax_error' => __( 'An error occurred. Please try again.', 'turf-booking' ),
+        'select_date_time' => __( 'Please select a date and time slot.', 'turf-booking' ),
+        'fill_contact_info' => __( 'Please fill in all contact information.', 'turf-booking' ),
+        'processing_booking' => __( 'Processing your booking...', 'turf-booking' ),
+        'booking_error' => __( 'Error processing booking. Please try again.', 'turf-booking' ),
+        'confirm_cancel' => __( 'Are you sure you want to cancel this booking?', 'turf-booking' ),
+        'processing' => __( 'Processing...', 'turf-booking' ),
+    );
+    
+    wp_localize_script( $this->plugin_name, 'tb_public_params', $localized_data );
+    wp_localize_script( $this->plugin_name . '-wizard', 'tb_public_params', $localized_data );
+}
     
     /**
      * Get currency symbol
