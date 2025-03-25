@@ -166,39 +166,50 @@ class Turf_Booking_Shortcodes {
      * @param array $atts Shortcode attributes
      * @return string Shortcode output
      */
-    public function booking_form_shortcode($atts) {
-        // Parse shortcode attributes
-        $atts = shortcode_atts(array(
-            'court_id' => 0,
-            'date' => '',
-            'redirect' => '',
-        ), $atts, 'turf_booking_form');
-        
-        $court_id = intval($atts['court_id']);
-        
-        // Start output buffer
-        ob_start();
-        
-        // Check if we have a valid court ID
-        if ($court_id <= 0) {
-            echo '<p>' . __('Please specify a valid court ID.', 'turf-booking') . '</p>';
-            return ob_get_clean();
-        }
-        
-        // Check if the court exists
-        $court = get_post($court_id);
-        
-        if (!$court || $court->post_type !== 'tb_court') {
-            echo '<p>' . __('The specified court does not exist.', 'turf-booking') . '</p>';
-            return ob_get_clean();
-        }
-        
-        // Include booking form template
-        include(TURF_BOOKING_PLUGIN_DIR . 'public/templates/booking-form.php');
-        
-        // Return the output
+/**
+ * Shortcode for booking form
+ *
+ * @param array $atts Shortcode attributes
+ * @return string Shortcode output
+ */
+public function booking_form_shortcode($atts) {
+    // Parse shortcode attributes
+    $atts = shortcode_atts(array(
+        'court_id' => 0,
+        'date' => '',
+        'redirect' => '',
+    ), $atts, 'turf_booking_form');
+    
+    $court_id = intval($atts['court_id']);
+    
+    // Start output buffer
+    ob_start();
+    
+    // Check if we have a valid court ID (either from shortcode or URL)
+    if ($court_id <= 0 && isset($_GET['court_id'])) {
+        $court_id = intval($_GET['court_id']);
+    }
+    
+    if ($court_id <= 0) {
+        echo '<p>' . __('Please select a court first.', 'turf-booking') . '</p>';
+        echo '<a href="' . esc_url(get_post_type_archive_link('tb_court')) . '" class="tb-button">' . __('View Courts', 'turf-booking') . '</a>';
         return ob_get_clean();
     }
+    
+    // Check if the court exists
+    $court = get_post($court_id);
+    
+    if (!$court || $court->post_type !== 'tb_court') {
+        echo '<p>' . __('The specified court does not exist.', 'turf-booking') . '</p>';
+        return ob_get_clean();
+    }
+    
+    // Include multi-step booking form template
+    include(TURF_BOOKING_PLUGIN_DIR . 'public/templates/multi-step-booking.php');
+    
+    // Return the output
+    return ob_get_clean();
+}
 
     /**
      * Shortcode for checkout page
